@@ -38,9 +38,8 @@ public class IspitGlavnaTest {
         theStage = stage;
     }
 
-
     @Test
-    public void testDodajGradNadmorska(FxRobot robot) {
+    public void testDodajGradUniverzitetski(FxRobot robot) {
         ctrl.resetujBazu();
 
         // Otvaranje forme za dodavanje
@@ -56,8 +55,10 @@ public class IspitGlavnaTest {
         robot.clickOn("#fieldBrojStanovnika");
         robot.write("350000");
 
-        robot.clickOn("#fieldNadmorskaVisina");
-        robot.write("550");
+        robot.clickOn("#cbUniverzitetski");
+
+        robot.clickOn("#fieldNazivUniverziteta");
+        robot.write("Univerzitet u Sarajevu");
 
         // Klik na dugme Ok
         robot.clickOn("#btnOk");
@@ -66,68 +67,87 @@ public class IspitGlavnaTest {
         GeografijaDAO dao = GeografijaDAO.getInstance();
         assertEquals(6, dao.gradovi().size());
 
-        boolean pronadjeno = false;
+        Grad sarajevo = null;
         for(Grad grad : dao.gradovi())
-            if (grad.getNaziv().equals("Sarajevo") && grad.getNadmorskaVisina() == 550)
-                pronadjeno = true;
-        assertTrue(pronadjeno);
+            if (grad.getNaziv().equals("Sarajevo"))
+                sarajevo = grad;
+        assertNotNull(sarajevo);
+        assertTrue(sarajevo instanceof UniverzitetskiGrad);
+
+        UniverzitetskiGrad ug = (UniverzitetskiGrad) sarajevo;
+        assertEquals("Univerzitet u Sarajevu", ug.getNazivUniverziteta());
     }
 
     @Test
-    public void testIzmijeniGradNadmorska(FxRobot robot) {
+    public void testIzmijeniGradUniverzitetski(FxRobot robot) {
         ctrl.resetujBazu();
 
-        // 250 ne smije biti default nadmorska visina za Graz jer je to "varanje"
+        // Graz ne smije biti univerzitetski grad jer je to "varanje"
         GeografijaDAO dao = GeografijaDAO.getInstance();
         Grad graz = dao.nadjiGrad("Graz");
-        assertNotEquals(250, graz.getNadmorskaVisina());
+        assertFalse(graz instanceof UniverzitetskiGrad);
 
         // Mijenjamo grad Graz
         robot.clickOn("Graz");
         robot.clickOn("#btnIzmijeniGrad");
 
         // Čekamo da dijalog postane vidljiv
-        robot.lookup("#fieldNaziv").tryQuery().isPresent();
+        robot.clickOn("#cbUniverzitetski");
 
-        robot.clickOn("#fieldNadmorskaVisina");
-        robot.press(KeyCode.CONTROL).press(KeyCode.A).release(KeyCode.A).release(KeyCode.CONTROL);
-        robot.write("250");
+        robot.clickOn("#fieldNazivUniverziteta");
+        robot.write("TU Graz");
 
         // Klik na dugme Ok
         robot.clickOn("#btnOk");
 
-        // Da li je promijenjen broj stanovnika Graza?
-        graz = dao.nadjiGrad("Graz");
-        assertEquals(250, graz.getNadmorskaVisina());
+        // Da li je Graz univerzitetski grad?
+        Grad graz2 = dao.nadjiGrad("Graz");
+        assertTrue(graz2 instanceof UniverzitetskiGrad);
+        UniverzitetskiGrad ug = (UniverzitetskiGrad) graz2;
+        assertEquals("TU Graz", ug.getNazivUniverziteta());
     }
 
     @Test
-    public void testKolonaNadmorska(FxRobot robot) {
-        // Postavljamo nadmorsku visinu za Graz da možemo testirati tabelu
+    public void testIzmijeniGradNijeUniverzitetski(FxRobot robot) {
         ctrl.resetujBazu();
 
+        // Graz ne smije biti univerzitetski grad jer je to "varanje"
+        GeografijaDAO dao = GeografijaDAO.getInstance();
+        Grad graz = dao.nadjiGrad("Graz");
+        assertFalse(graz instanceof UniverzitetskiGrad);
+
+        // Mijenjamo grad Graz
         robot.clickOn("Graz");
         robot.clickOn("#btnIzmijeniGrad");
 
         // Čekamo da dijalog postane vidljiv
-        robot.lookup("#fieldNaziv").tryQuery().isPresent();
+        robot.clickOn("#cbUniverzitetski");
 
-        robot.clickOn("#fieldNadmorskaVisina");
-        robot.write("250");
+        robot.clickOn("#fieldNazivUniverziteta");
+        robot.write("TU Graz");
 
         // Klik na dugme Ok
         robot.clickOn("#btnOk");
 
-        TableView<Grad> tableViewGradovi = robot.lookup("#tableViewGradovi").queryAs(TableView.class);
-        assertNotNull(tableViewGradovi);
+        // Mijenjamo London
+        robot.clickOn("London");
+        robot.clickOn("#btnIzmijeniGrad");
+        robot.clickOn("#btnOk");
 
-        boolean found = false;
-        for (TableColumn column : tableViewGradovi.getColumns()) {
-            if (column.getText().equals("Nadmorska visina")) {
-                found = true;
-            }
-        }
-        assertTrue(found);
+        // Ponovo mijenjamo grad Graz
+        robot.clickOn("Graz");
+        robot.clickOn("#btnIzmijeniGrad");
+
+        // Čekamo da dijalog postane vidljiv
+        robot.clickOn("#cbUniverzitetski");
+
+        // Klik na dugme Ok
+        robot.clickOn("#btnOk");
+
+        // Da li je Graz univerzitetski grad?
+        Grad graz2 = dao.nadjiGrad("Graz");
+        assertFalse(graz2 instanceof UniverzitetskiGrad);
     }
+
 }
 */

@@ -16,11 +16,15 @@ import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 
+import java.security.Key;
+
 import static javafx.scene.layout.Region.USE_COMPUTED_SIZE;
 import static org.junit.jupiter.api.Assertions.*;
 
+// Testovi za klasu GradController ako se pošalje UniverzitetskiGrad
+
 @ExtendWith(ApplicationExtension.class)
-public class IspitGradControllerTest {
+public class IspitUGControllerTest {
     Stage theStage;
     GradController ctrl;
 
@@ -28,7 +32,9 @@ public class IspitGradControllerTest {
     public void start(Stage stage) throws Exception {
         GeografijaDAO dao = GeografijaDAO.getInstance();
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/grad.fxml"));
-        ctrl = new GradController(null, dao.drzave());
+        Drzava vb = dao.nadjiDrzavu("Velika Britanija");
+        UniverzitetskiGrad sarajevo = new UniverzitetskiGrad(0, "Sarajevo", 350000, vb, "Univerzitet u Sarajevu");
+        ctrl = new GradController(sarajevo, dao.drzave());
         loader.setController(ctrl);
         Parent root = loader.load();
         stage.setTitle("Grad");
@@ -41,7 +47,7 @@ public class IspitGradControllerTest {
 
 
     @Test
-    public void testPoljaPostoje(FxRobot robot) {
+    public void testPoljaValidneVrijednosti(FxRobot robot) {
         TextField fld = robot.lookup("#fieldNazivUniverziteta").queryAs(TextField.class);
         assertNotNull(fld);
         CheckBox cb = robot.lookup("#cbUniverzitetski").queryAs(CheckBox.class);
@@ -54,77 +60,39 @@ public class IspitGradControllerTest {
         TextField fld = robot.lookup("#fieldNazivUniverziteta").queryAs(TextField.class);
         CheckBox cb = robot.lookup("#cbUniverzitetski").queryAs(CheckBox.class);
 
-        // Grad po defaultu nije univerzitetski
-        assertFalse(cb.isSelected());
+        // Sarajevo je univerzitetski grad
+        assertTrue(cb.isSelected());
 
-        // Polje je disabled
-        assertTrue(fld.isDisabled());
-
-        // Klikamo
-        robot.clickOn("#cbUniverzitetski");
+        // Naziv univerziteta nije disabled
         assertFalse(fld.isDisabled());
 
-        // Opet klikamo
+        // Naziv univerziteta je ispravan
+        assertEquals("Univerzitet u Sarajevu", fld.getText());
+    }
+
+    @Test
+    public void testCbAction(FxRobot robot) {
+        // Proglašavamo da grad nije univerzitetski
         robot.clickOn("#cbUniverzitetski");
+
+        // Naziv univerziteta je disabled
+        TextField fld = robot.lookup("#fieldNazivUniverziteta").queryAs(TextField.class);
         assertTrue(fld.isDisabled());
+
+        // Klik na dugme ok
+        robot.clickOn("#btnOk");
+
+        // Vraćen je grad koji više nije univerzitetski
+        Grad grad = ctrl.getGrad();
+        assertFalse(grad instanceof UniverzitetskiGrad);
     }
 
     @Test
     public void testValidacijaNazivaUniverziteta(FxRobot robot) {
-        // Grad po defaultu nije univerzitetski
-        CheckBox cb = robot.lookup("#cbUniverzitetski").queryAs(CheckBox.class);
-        assertFalse(cb.isSelected());
-
-        // Proglašavamo ga za univerzitetski
-        robot.clickOn("#cbUniverzitetski");
-
-        // Polje naziv univerziteta po defaultu treba biti prazno
-        robot.clickOn("#fieldNazivUniverziteta");
-
-        // Klik na dugme ok
-        robot.clickOn("#btnOk");
-
-        // Naziv univerziteta nije validan
         TextField fld = robot.lookup("#fieldNazivUniverziteta").queryAs(TextField.class);
-        Background bg = fld.getBackground();
-        boolean colorFound = false;
-        for (BackgroundFill bf : bg.getFills())
-            if (bf.getFill().toString().contains("ffb6c1"))
-                colorFound = true;
-        assertTrue(colorFound);
-    }
 
-    @Test
-    public void testValidacijaNazivaUniverziteta2(FxRobot robot) {
-        // Grad po defaultu nije univerzitetski
-        // Proglašavamo ga za univerzitetski
-        robot.clickOn("#cbUniverzitetski");
-
-        // Polje naziv univerziteta po defaultu treba biti prazno
+        // Brišemo postojeću vrijednost naziva univerziteta
         robot.clickOn("#fieldNazivUniverziteta");
-        robot.write("proba");
-
-        // Klik na dugme ok
-        robot.clickOn("#btnOk");
-        TextField fld = robot.lookup("#fieldNazivUniverziteta").queryAs(TextField.class);
-        Background bg = fld.getBackground();
-        boolean colorFound = false;
-        for (BackgroundFill bf : bg.getFills())
-            if (bf.getFill().toString().contains("adff2f"))
-                colorFound = true;
-        assertTrue(colorFound);
-    }
-
-    @Test
-    public void testValidacijaNazivaUniverziteta3(FxRobot robot) {
-        // Grad po defaultu nije univerzitetski
-        // Proglašavamo ga za univerzitetski
-        robot.clickOn("#cbUniverzitetski");
-
-        // Polje naziv univerziteta po defaultu treba biti prazno
-        robot.clickOn("#fieldNazivUniverziteta");
-        robot.write("proba");
-        // Brišemo otkucani tekst
         robot.press(KeyCode.CONTROL).press(KeyCode.A).release(KeyCode.A).release(KeyCode.CONTROL);
         robot.press(KeyCode.DELETE).release(KeyCode.DELETE);
 
@@ -132,12 +100,33 @@ public class IspitGradControllerTest {
         robot.clickOn("#btnOk");
 
         // Naziv univerziteta nije validan
-        TextField fld = robot.lookup("#fieldNazivUniverziteta").queryAs(TextField.class);
         Background bg = fld.getBackground();
         boolean colorFound = false;
         for (BackgroundFill bf : bg.getFills())
             if (bf.getFill().toString().contains("ffb6c1"))
                 colorFound = true;
         assertTrue(colorFound);
+    }
+
+    @Test
+    public void testPromjenaNazivaUniverziteta(FxRobot robot) {
+        // Dvaput ćemo kliknuti na cb da malo testiramo
+        robot.clickOn("#cbUniverzitetski");
+        robot.clickOn("#cbUniverzitetski");
+
+        // Polje naziv univerziteta po defaultu treba biti prazno
+        robot.clickOn("#fieldNazivUniverziteta");
+        // Brišemo otkucani tekst
+        robot.press(KeyCode.CONTROL).press(KeyCode.A).release(KeyCode.A).release(KeyCode.CONTROL);
+        robot.write("proba");
+
+        // Klik na dugme ok
+        robot.clickOn("#btnOk");
+
+        // Vraćen je grad koji je univerzitetski
+        Grad grad = ctrl.getGrad();
+        assertTrue(grad instanceof UniverzitetskiGrad);
+        UniverzitetskiGrad ug = (UniverzitetskiGrad) grad;
+        assertEquals("proba", ug.getNazivUniverziteta());
     }
 }*/

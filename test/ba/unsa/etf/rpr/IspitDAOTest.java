@@ -14,18 +14,17 @@ import static org.junit.jupiter.api.Assertions.*;
 public class IspitDAOTest {
 
     @Test
-    void testGrad() {
-        Grad grad = new Grad();
-        grad.setNaziv("Sarajevo");
-        grad.setNadmorskaVisina(550);
-        assertEquals(550, grad.getNadmorskaVisina());
+    void testUniverzitetskiGrad() {
+        UniverzitetskiGrad ug = new UniverzitetskiGrad();
+        ug.setNazivUniverziteta("Univerzitet u Sarajevu");
+        assertEquals("Univerzitet u Sarajevu", ug.getNazivUniverziteta());
     }
 
     @Test
-    void testGradCtor() {
+    void testUniverzitetskiGradCtor() {
         Drzava drzava = new Drzava();
-        Grad grad = new Grad(0, "Sarajevo", 350000, drzava, 516); // Nadmorska visina je posljednji parametar
-        assertEquals(516, grad.getNadmorskaVisina());
+        UniverzitetskiGrad grad = new UniverzitetskiGrad(0, "Sarajevo", 350000, drzava, "Univerzitet u Sarajevu"); // Naziv univerziteta je posljednji parametar
+        assertEquals("Univerzitet u Sarajevu", grad.getNazivUniverziteta());
     }
 
     @Test
@@ -36,16 +35,13 @@ public class IspitDAOTest {
 
         GeografijaDAO dao = GeografijaDAO.getInstance();
         Grad bech = dao.glavniGrad("Austrija");
-        bech.setNadmorskaVisina(128);
-        dao.izmijeniGrad(bech);
-
-        Grad b2 = dao.glavniGrad("Austrija");
-        assertEquals(128, b2.getNadmorskaVisina());
-        b2.setNadmorskaVisina(-50);
+        UniverzitetskiGrad b2 = new UniverzitetskiGrad(bech.getId(), bech.getNaziv(), bech.getBrojStanovnika(), bech.getDrzava(), "TU Wien");
         dao.izmijeniGrad(b2);
 
         Grad b3 = dao.glavniGrad("Austrija");
-        assertEquals(-50, b2.getNadmorskaVisina());
+        assertTrue(b3 instanceof UniverzitetskiGrad);
+        UniverzitetskiGrad ug = (UniverzitetskiGrad) b3;
+        assertEquals("TU Wien", ug.getNazivUniverziteta());
     }
 
     @Test
@@ -55,19 +51,21 @@ public class IspitDAOTest {
         dbfile.delete();
 
         GeografijaDAO dao = GeografijaDAO.getInstance();
-        Drzava francuska = dao.nadjiDrzavu("Francuska");
-        Grad sarajevo = new Grad(0, "Sarajevo", 350000, francuska, 550);
+        Drzava vb = dao.nadjiDrzavu("Velika Britanija");
+        UniverzitetskiGrad oxford = new UniverzitetskiGrad(0, "Oxford", 350000, vb, "Oxford University");
 
-        dao.dodajGrad(sarajevo);
+        dao.dodajGrad(oxford);
 
         Grad s2 = null;
         for(Grad grad : dao.gradovi()) {
-            if (grad.getNaziv().equals("Sarajevo"))
+            if (grad.getNaziv().equals("Oxford"))
                 s2 = grad;
         }
         assertNotNull(s2);
 
-        assertEquals(550, s2.getNadmorskaVisina());
+        assertTrue(s2 instanceof UniverzitetskiGrad);
+        UniverzitetskiGrad s3 = (UniverzitetskiGrad) s2;
+        assertEquals("Oxford University", s3.getNazivUniverziteta());
     }
 
 
@@ -78,15 +76,17 @@ public class IspitDAOTest {
         dbfile.delete();
 
         GeografijaDAO dao = GeografijaDAO.getInstance();
-        Drzava francuska = dao.nadjiDrzavu("Francuska");
+        Drzava vb = dao.nadjiDrzavu("Velika Britanija");
+        UniverzitetskiGrad oxford = new UniverzitetskiGrad(0, "Oxford", 350000, vb, "Oxford University");
 
-        Grad sarajevo = new Grad(0, "Sarajevo", 350000, francuska, 520);
-        dao.dodajGrad(sarajevo);
+        dao.dodajGrad(oxford);
 
-        Grad s2 = dao.nadjiGrad("Sarajevo");
+        Grad s2 = dao.nadjiGrad("Oxford");
         assertNotNull(s2);
 
-        assertEquals(520, s2.getNadmorskaVisina());
+        assertTrue(s2 instanceof UniverzitetskiGrad);
+        UniverzitetskiGrad s3 = (UniverzitetskiGrad) s2;
+        assertEquals("Oxford University", s3.getNazivUniverziteta());
     }
 
 
@@ -97,9 +97,9 @@ public class IspitDAOTest {
         dbfile.delete();
 
         GeografijaDAO dao = GeografijaDAO.getInstance();
-        Drzava francuska = dao.nadjiDrzavu("Francuska");
+        Drzava vb = dao.nadjiDrzavu("Velika Britanija");
+        UniverzitetskiGrad sarajevo = new UniverzitetskiGrad(0, "Sarajevo", 350000, vb, "Univerzitet u Sarajevu");
 
-        Grad sarajevo = new Grad(0, "Sarajevo", 350000, francuska, 490); // Nadmorska visina je posljednji parametar
         dao.dodajGrad(sarajevo);
 
         Grad s2 = dao.nadjiGrad("Sarajevo");
@@ -109,9 +109,12 @@ public class IspitDAOTest {
         dao.dodajDrzavu(bih);
 
         Drzava d2 = dao.nadjiDrzavu("Bosna i Hercegovina");
-
         assertNotNull(d2);
-        assertEquals(490, d2.getGlavniGrad().getNadmorskaVisina());
+
+        Grad s3 = d2.getGlavniGrad();
+        assertTrue(s3 instanceof UniverzitetskiGrad);
+        UniverzitetskiGrad s4 = (UniverzitetskiGrad) s3;
+        assertEquals("Univerzitet u Sarajevu", s4.getNazivUniverziteta());
     }
 
     @Test
@@ -131,15 +134,16 @@ public class IspitDAOTest {
         try {
             conn = DriverManager.getConnection("jdbc:sqlite:baza.db");
             try {
-                PreparedStatement nadmorskaUpit = conn.prepareStatement("SELECT nadmorska_visina FROM grad WHERE id=1");
+                PreparedStatement nadmorskaUpit = conn.prepareStatement("SELECT naziv_univerziteta FROM grad WHERE id=1");
                 nadmorskaUpit.execute();
                 conn.close();
             } catch (SQLException e) {
-                fail("Tabela grad ne sadrži kolonu nadmorska_visina");
+                fail("Tabela grad ne sadrži kolonu naziv_univerziteta");
             }
         } catch (SQLException e) {
             fail("Datoteka sa bazom ne postoji ili je nedostupna");
         }
 
     }
-}*/
+}
+*/
